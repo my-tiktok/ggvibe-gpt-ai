@@ -10,37 +10,39 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Set up JDK
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
       - name: Install Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install required SDK components
         run: |
-          sdkmanager --install "platform-tools" \
-                              "platforms;android-34" \
-                              "build-tools;34.0.0"
+          sudo mkdir -p /usr/lib/android-sdk/cmdline-tools
+          cd /usr/lib/android-sdk/cmdline-tools
+          sudo curl -sSL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o cmdtools.zip
+          sudo unzip -q cmdtools.zip -d latest
+          sudo rm cmdtools.zip
+          echo "ANDROID_SDK_ROOT=/usr/lib/android-sdk" >> $GITHUB_ENV
+          echo "PATH=/usr/lib/android-sdk/cmdline-tools/latest/bin:/usr/lib/android-sdk/platform-tools:/usr/lib/android-sdk/emulator:\$PATH" >> $GITHUB_ENV
+          yes | sudo /usr/lib/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null
 
-      - name: Install Gradle 8.7
+      - name: Install platforms and build-tools
         run: |
-          wget -q https://services.gradle.org/distributions/gradle-8.7-bin.zip
-          unzip -q gradle-8.7-bin.zip
-          echo "$PWD/gradle-8.7/bin" >> $GITHUB_PATH
+          /usr/lib/android-sdk/cmdline-tools/latest/bin/sdkmanager \
+            "platforms;android-34" "build-tools;34.0.0" > /dev/null
 
       - name: Build Release APK
         working-directory: android
         run: |
-          gradle --version
-          gradle assembleRelease
+          chmod +x ./gradlew
+          ./gradlew assembleRelease
 
       - name: Upload APK artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: ggvibe-ai-apk
