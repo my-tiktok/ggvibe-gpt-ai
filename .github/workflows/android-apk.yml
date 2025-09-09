@@ -1,7 +1,7 @@
   name: Android Debug APK
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -35,3 +35,4 @@ on:
          with:
            name: app-debug-apk
            path: android/app/build/outputs/**/*.apk
+
