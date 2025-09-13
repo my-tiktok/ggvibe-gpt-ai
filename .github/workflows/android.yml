@@ -1,11 +1,9 @@
-permissions:
-  contents: write
-
 name: Build Android APK
 
 on:
   push:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -18,19 +16,32 @@ jobs:
       - name: Set up JDK 17 (Temurin)
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
+          distribution: temurin
           java-version: '17'
+          cache: 'gradle'
+
+      # Guard against local Gradle distributions
+      - name: Ensure Gradle wrapper uses HTTPS
+dist
+        run: |
+          if grep -R --line-number
+"distributionUrl=file:" android/gradle/wrapper/
+gradle-wrapper.properties; then
+            echo "::error::Found local 'file:'
+distributionUrl in gradle-wrapper.properties"
+            exit 1
+          fi
 
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
       - name: Build Debug APK
         run: cd android && ./gradlew
-assembleDebug
+--no-daemon assembleDebug
 
-      - name: Upload Debug APK artifact
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug
+          name: app-debug-apk
           path: android/app/build/outputs/apk/
 debug/app-debug.apk
