@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.webkit.*
@@ -41,10 +42,39 @@ class MainActivity : AppCompatActivity() {
         }
 
         webView.webViewClient = object : WebViewClient() {
-            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                // Allow ALL domains inside the app
+
+            // Block “SQL-like” domains and file types
+            private fun isSqlLike(u: Uri?): Boolean {
+                if (u == null) return false
+                val scheme = (u.scheme ?: "").lowercase()
+                if (scheme !in listOf("http","https","file")) return true  // block odd schemes
+
+                val host = (u.host ?: "").lowercase()
+                val path = (u.path ?: "").lowercase()
+
+                // hosts that *look* SQL-related
+                val hostBadFragments = listOf(
+                    "sql", "mysql", "mssql", "postgres", "postgresql", "oracle", "sqlite"
+                )
+                if (hostBadFragments.any { host.contains(it) }) return true
+
+                // file extensions that look like DB/SQL dumps
+                val badExt = listOf(".sql", ".sqlite", ".sqlite3", ".db", ".db3", ".dump", ".bak")
+                if (badExt.any { path.endsWith(it) }) return true
+
                 return false
             }
+
+            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                val url = request?.url
+                return if (isSqlLike(url)) {
+                    showLoading(false); showError(true)
+                    true // block
+                } else {
+                    false // allow
+                }
+            }
+
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 showLoading(true); showError(false)
             }
