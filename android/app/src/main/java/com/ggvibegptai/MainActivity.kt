@@ -12,7 +12,7 @@ class MainActivity : AppCompatActivity() {
 
         val wv = findViewById<WebView>(R.id.webview)
         wv.settings.javaScriptEnabled = true
-        wv.webViewClient = WebViewClient() // keep navigation in-app
-        wv.loadUrl("https://YOUR-SQUARESPACE-DOMAIN.com/") // <-- put your URL here
+        wv.webViewClient = WebViewClient() // keep navigation inside app
+        wv.loadUrl("https://ggvibe-gpt-all-1-ai.org") // <--- change if needed
     }
 }
