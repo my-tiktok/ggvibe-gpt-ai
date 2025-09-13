@@ -43,33 +43,18 @@ class MainActivity : AppCompatActivity() {
 
         webView.webViewClient = object : WebViewClient() {
 
-            // Block “SQL-like” domains and file types
-            private fun isSqlLike(u: Uri?): Boolean {
+            // Block Squarespace domains
+            private fun isBlocked(u: Uri?): Boolean {
                 if (u == null) return false
-                val scheme = (u.scheme ?: "").lowercase()
-                if (scheme !in listOf("http","https","file")) return true  // block odd schemes
-
                 val host = (u.host ?: "").lowercase()
-                val path = (u.path ?: "").lowercase()
-
-                // hosts that *look* SQL-related
-                val hostBadFragments = listOf(
-                    "sql", "mysql", "mssql", "postgres", "postgresql", "oracle", "sqlite"
-                )
-                if (hostBadFragments.any { host.contains(it) }) return true
-
-                // file extensions that look like DB/SQL dumps
-                val badExt = listOf(".sql", ".sqlite", ".sqlite3", ".db", ".db3", ".dump", ".bak")
-                if (badExt.any { path.endsWith(it) }) return true
-
-                return false
+                return host.contains("squarespace.com")
             }
 
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val url = request?.url
-                return if (isSqlLike(url)) {
+                return if (isBlocked(url)) {
                     showLoading(false); showError(true)
-                    true // block
+                    true // block Squarespace
                 } else {
                     false // allow
                 }
@@ -94,7 +79,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startUrl(): String {
-        // Use the URL from the launch intent if present; else show local welcome page
         return intent?.dataString?.takeIf { it.isNotBlank() } ?: localWelcome
     }
 
