@@ -15,3 +15,4 @@ collaboration
    git clone
 https://github.com/my-tiktok/ggvibe-gpt-ai.git
 
+test build trigger
