@@ -1,94 +1,55 @@
 package com.ggvibegptai
 
 import android.annotation.SuppressLint
-import android.graphics.Bitmap
+import android.os.Bundle
+import androidx.appcompat.app.AppCompatActivity
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import android.view.View
+import android.widget.Button
+import android.widget.ProgressBar
+import android.widget.TextView
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
-import android.net.Uri
-import android.os.Bundle
-import android.view.View
-import android.webkit.*
-import android.widget.Button
-import android.widget.LinearLayout
-import android.widget.ProgressBar
-import androidx.appcompat.app.AppCompatActivity
+import android.content.Context
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
     private lateinit var progress: ProgressBar
-    private lateinit var errorView: LinearLayout
-
-    private val localWelcome = "file:///android_asset/index.html"
+    private lateinit var errorText: TextView
+    private lateinit var retryBtn: Button
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        webView = findViewById(R.id.webView)
+        webView = findViewById(R.id.webview)
         progress = findViewById(R.id.progress)
-        errorView = findViewById(R.id.errorView)
-        val btnRetry: Button = findViewById(R.id.btnRetry)
+        errorText = findViewById(R.id.error_text)
+        retryBtn = findViewById(R.id.retry_btn)
 
-        with(webView.settings) {
-            javaScriptEnabled = true
-            domStorageEnabled = true
-            cacheMode = WebSettings.LOAD_DEFAULT
-            loadsImagesAutomatically = true
-            useWideViewPort = true
-            loadWithOverviewMode = true
-            mediaPlaybackRequiresUserGesture = false
-        }
-
+        webView.settings.javaScriptEnabled = true
         webView.webViewClient = object : WebViewClient() {
-
-            // Block Squarespace domains
-            private fun isBlocked(u: Uri?): Boolean {
-                if (u == null) return false
-                val host = (u.host ?: "").lowercase()
-                return host.contains("squarespace.com")
-            }
-
-            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                val url = request?.url
-                return if (isBlocked(url)) {
-                    showLoading(false); showError(true)
-                    true // block Squarespace
-                } else {
-                    false // allow
-                }
-            }
-
-            override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
-                showLoading(true); showError(false)
-            }
             override fun onPageFinished(view: WebView?, url: String?) {
                 showLoading(false)
-            }
-            override fun onReceivedError(view: WebView?, req: WebResourceRequest?, err: WebResourceError?) {
-                showLoading(false); showError(true)
-            }
-            override fun onReceivedSslError(view: WebView?, handler: SslErrorHandler?, error: SslError?) {
-                showLoading(false); showError(true); handler?.cancel()
+                showError(false)
             }
         }
 
-        btnRetry.setOnClickListener { reload() }
-        reload()
+        retryBtn.setOnClickListener { loadHome() }
+        loadHome()
     }
 
-    private fun startUrl(): String {
-        return intent?.dataString?.takeIf { it.isNotBlank() } ?: localWelcome
-    }
-
-    private fun reload() {
-        val url = startUrl()
-        if (isOnline() || url.startsWith("file://")) {
+    private fun loadHome() {
+        if (isOnline()) {
             showError(false)
-            webView.loadUrl(url)
+            showLoading(true)
+            webView.loadUrl("https://ggvibe-gpt-all-1-ai.org")
         } else {
-            showLoading(false); showError(true)
+            showLoading(false)
+            showError(true)
         }
     }
 
@@ -97,18 +58,23 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showError(show: Boolean) {
-        errorView.visibility = if (show) View.VISIBLE else View.GONE
+        errorText.visibility = if (show) View.VISIBLE else View.GONE
         webView.visibility = if (show) View.GONE else View.VISIBLE
     }
 
     private fun isOnline(): Boolean {
-        val cm = getSystemService(ConnectivityManager::class.java)
+        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val net = cm.activeNetwork ?: return false
         val caps = cm.getNetworkCapabilities(net) ?: return false
         return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+                || caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
     override fun onBackPressed() {
-        if (this::webView.isInitialized && webView.canGoBack()) webView.goBack() else super.onBackPressed()
+        if (this::webView.isInitialized && webView.canGoBack()) {
+            webView.goBack()
+        } else {
+            super.onBackPressed()
+        }
     }
 }
