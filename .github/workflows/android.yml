@@ -1,16 +1,29 @@
-name: Build Android APK
+name: Android APK (build & release)
 
 on:
+  # Manual run (you choose the release tag)
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release tag (e.g. v0.1.0)'
+        required: true
+  # Still build on main pushes (artifact only)
   push:
     branches: [ main ]
-  workflow_dispatch:
+  # Automatically build + release on tag pushes
+like v1.2.3
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up JDK 17 (Temurin)
@@ -20,15 +33,14 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      # Guard against local Gradle distributions
       - name: Ensure Gradle wrapper uses HTTPS
-dist
         run: |
+          FILE=android/gradle/wrapper/
+gradle-wrapper.properties
           if grep -R --line-number
-"distributionUrl=file:" android/gradle/wrapper/
-gradle-wrapper.properties; then
+'^distributionUrl=file:' "$FILE"; then
             echo "::error::Found local 'file:'
-distributionUrl in gradle-wrapper.properties"
+distributionUrl in $FILE"
             exit 1
           fi
 
@@ -45,3 +57,44 @@ distributionUrl in gradle-wrapper.properties"
           name: app-debug-apk
           path: android/app/build/outputs/apk/
 debug/app-debug.apk
+
+  release:
+    # Run release job when:
+    #  - Manually triggered (workflow_dispatch), OR
+    #  - A tag push (refs/tags/v*)
+    needs: build
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Download APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app-debug-apk
+          path: dist
+
+      - name: Set tag name
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" =
+"workflow_dispatch" ]; then
+            echo "value=$
+{{ github.event.inputs.release_tag }}" >>
+$GITHUB_OUTPUT
+          else
+            # strip refs/tags/
+            echo "value=${GITHUB_REF#refs/
+tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create GitHub Release and attach APK
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.value }}
+          name: ${{ steps.tag.outputs.value }}
+          files: dist/app-debug.apk
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
