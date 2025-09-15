@@ -1,20 +1,20 @@
 name: Android APK (build & release)
 
 on:
-  # Manual run (you choose the release tag)
+  # Manual run (choose release tag)
   workflow_dispatch:
     inputs:
       release_tag:
         description: 'Release tag (e.g. v0.1.0)'
         required: true
-  # Still build on main pushes (artifact only)
+  # Build artifact on pushes to main
   push:
     branches: [ main ]
-  # Automatically build + release on tag pushes
-like v1.2.3
-  push:
-    tags:
-      - 'v*'
+  # Auto build + release on tag pushes like v1.2.3
+  # (keep if you want automatic releases on tags)
+  # push:
+  #   tags:
+  #     - 'v*'
 
 permissions:
   contents: write
@@ -31,40 +31,40 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-          cache: 'gradle'
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
 
       - name: Ensure Gradle wrapper uses HTTPS
         run: |
-          FILE=android/gradle/wrapper/
-gradle-wrapper.properties
-          if grep -R --line-number
-'^distributionUrl=file:' "$FILE"; then
-            echo "::error::Found local 'file:'
-distributionUrl in $FILE"
+          FILE=android/gradle/wrapper/gradle-wrapper.properties
+          if grep -R --line-number '^distributionUrl=file:' "$FILE"; then
+            echo "::error::Found local 'file:' distributionUrl in $FILE"
             exit 1
           fi
 
       - name: Make gradlew executable
-        run: chmod +x android/gradlew
+        working-directory: android
+        run: chmod +x ./gradlew
 
       - name: Build Debug APK
-        run: cd android && ./gradlew
---no-daemon assembleDebug
+        working-directory: android
+        run: ./gradlew --no-daemon assembleDebug
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-debug-apk
-          path: android/app/build/outputs/apk/
-debug/app-debug.apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
 
   release:
     # Run release job when:
-    #  - Manually triggered (workflow_dispatch), OR
-    #  - A tag push (refs/tags/v*)
+    # - Manually triggered (workflow_dispatch), OR
+    # - (optional) a tag push (refs/tags/v*)
     needs: build
     runs-on: ubuntu-latest
-    if: >
+    if: >-
       github.event_name == 'workflow_dispatch' ||
       startsWith(github.ref, 'refs/tags/v')
     steps:
@@ -77,15 +77,10 @@ debug/app-debug.apk
       - name: Set tag name
         id: tag
         run: |
-          if [ "${{ github.event_name }}" =
-"workflow_dispatch" ]; then
-            echo "value=$
-{{ github.event.inputs.release_tag }}" >>
-$GITHUB_OUTPUT
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "value=${{ github.event.inputs.release_tag }}" >> $GITHUB_OUTPUT
           else
-            # strip refs/tags/
-            echo "value=${GITHUB_REF#refs/
-tags/}" >> $GITHUB_OUTPUT
+            echo "value=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
           fi
 
       - name: Create GitHub Release and attach APK
