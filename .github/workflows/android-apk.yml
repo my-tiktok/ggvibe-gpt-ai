@@ -1,15 +1,18 @@
-name: Android Debug APK
+name: Android APK (build & optional release)
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Optional release tag (e.g. v1.0.0). Leave blank to only build APK."
+        required: false
   push:
-    branches:
-      - main
+    tags:
+      - 'v*'
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,17 +23,37 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Make gradlew executable
-        run: chmod +x ./gradlew
+      # If gradlew is missing (fresh repo), bootstrap Gradle 8.7 and generate wrapper
+      - name: Ensure Gradle wrapper
+        shell: bash
+        run: |
+          if [ ! -f gradlew ]; then
+            echo "gradlew not found. Bootstrapping Gradle 8.7..."
+            mkdir -p .gradle-tmp
+            curl -sSL -o .gradle-tmp/gradle-8.7-bin.zip https://services.gradle.org/distributions/gradle-8.7-bin.zip
+            unzip -q .gradle-tmp/gradle-8.7-bin.zip -d .gradle-tmp
+            .gradle-tmp/gradle-8.7/bin/gradle wrapper --gradle-version 8.7 --distribution-type bin
+            rm -rf .gradle-tmp
+          fi
+          chmod +x gradlew
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug
+        run: ./gradlew --no-daemon assembleDebug
 
-      - name: Upload APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: debug-apk
+          name: ggvibe-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Create GitHub Release (when release_tag provided)
+        if: ${{ github.event.inputs.release_tag != '' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.release_tag }}
+          name: ${{ github.event.inputs.release_tag }}
+          files: app/build/outputs/apk/debug/app-debug.apk
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
