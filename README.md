@@ -26,3 +26,27 @@ Switching between multiple AI tools wastes time and breaks focus. GGvibe GPT uni
 ---
 
 ## 📦 Project Structure
+# GGvibe GPT: All-in-One AI Assistant
+
+**Demo & Download**
+
+- APK (Prototype): https://github.com/my-tiktok/ggvibe-gpt-ai/releases
+
+- Code: https://github.com/my-tiktok/ggvibe-gpt-ai
+
+
+
+## Features
+
+- Android app (Kotlin)
+
+- Node.js/Express backend
+
+- OpenAI GPT APIs
+
+- Firebase Auth + Storage
+
+- REST APIs with Retrofit + OkHttp
+
+- CI/CD with GitHub Actions
+
